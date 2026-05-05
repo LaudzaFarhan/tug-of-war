@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CheckCircle } from '@phosphor-icons/react';
 
 export default function VsScreen({ p1Name, p2Name, onComplete }) {
   const [countdown, setCountdown] = useState(null);
+  
+  const beepSoundRef = useRef(null);
+  const lastPlayedRef = useRef(null);
   
   const handleReady = () => {
     setCountdown(3);
@@ -11,11 +14,36 @@ export default function VsScreen({ p1Name, p2Name, onComplete }) {
   useEffect(() => {
     if (countdown === null) return;
 
+    // ONLY play the audio once at the very beginning (when countdown is 3)
+    if (countdown === 3 && lastPlayedRef.current !== 3) {
+      if (beepSoundRef.current) {
+        beepSoundRef.current.currentTime = 0;
+        beepSoundRef.current.play().catch(() => {});
+      }
+      lastPlayedRef.current = 3;
+    }
+
     if (countdown === 'GO!') {
-      const timer = setTimeout(() => {
+      let timeoutId;
+      const audioEl = beepSoundRef.current;
+      
+      const handleEnded = () => {
+        clearTimeout(timeoutId);
         onComplete();
-      }, 1000);
-      return () => clearTimeout(timer);
+      };
+      
+      if (audioEl) {
+        audioEl.addEventListener('ended', handleEnded);
+        // Fallback max wait time of 3 seconds just in case audio fails or is blocked
+        timeoutId = setTimeout(handleEnded, 3000);
+      } else {
+        timeoutId = setTimeout(onComplete, 1000);
+      }
+
+      return () => {
+        if (audioEl) audioEl.removeEventListener('ended', handleEnded);
+        clearTimeout(timeoutId);
+      };
     }
 
     if (countdown > 0) {
@@ -54,6 +82,9 @@ export default function VsScreen({ p1Name, p2Name, onComplete }) {
           </span>
         </div>
       )}
+      
+      {/* HTML5 Audio tag for reliable playback */}
+      <audio ref={beepSoundRef} src="sounds/countdown_beep.mp3" preload="auto" />
     </div>
   );
 }

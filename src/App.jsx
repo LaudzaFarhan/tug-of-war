@@ -12,6 +12,8 @@ function App() {
   const [p2Name, setP2Name] = useState('Pemain 2');
   const [gameDuration, setGameDuration] = useState(60);
   const [studentList, setStudentList] = useState([]);
+  const [matchups, setMatchups] = useState([]); // Array of [p1, p2] pairs
+  const [hasDrawnBracket, setHasDrawnBracket] = useState(false);
   
   const [leaderboard, setLeaderboard] = useState([]);
   const [matchResult, setMatchResult] = useState({ winner: null, loser: null, isDraw: false });
@@ -60,6 +62,22 @@ function App() {
     
     if (mode === 'individual') {
       setStudentList(list);
+      
+      // Generate Tournament Matchups
+      const shuffledList = [...list].sort(() => Math.random() - 0.5);
+      const generatedMatchups = [];
+      for (let i = 0; i < shuffledList.length; i += 2) {
+        if (i + 1 < shuffledList.length) {
+          generatedMatchups.push([shuffledList[i], shuffledList[i + 1]]);
+        } else {
+          // Odd person gets a "Bye" (or we just ignore them for now)
+          // Let's pair them with a "Tamu Khusus" (Special Guest) or just ignore for simple logic.
+          // For now, if odd, the last person is skipped in this round.
+        }
+      }
+      setMatchups(generatedMatchups);
+      setHasDrawnBracket(false); // Reset drawing animation
+      
       setGameState('shuffle');
     } else {
       setP1Name(names.p1);
@@ -68,10 +86,11 @@ function App() {
     }
   };
 
-  const handleShuffleComplete = (p1, p2, remainingList) => {
+  const handleShuffleComplete = (p1, p2, remainingMatchups) => {
     setP1Name(p1);
     setP2Name(p2);
-    setStudentList(remainingList);
+    setMatchups(remainingMatchups);
+    setHasDrawnBracket(true); // Ensure it doesn't redraw on Next Battle
     setGameState('vs');
   };
 
@@ -113,12 +132,12 @@ function App() {
   };
 
   const handleNextBattle = () => {
-    if (studentList.length < 2) {
-      alert('Tidak cukup siswa tersisa! Silakan tambahkan lebih banyak nama.');
+    if (matchups.length === 0) {
+      alert('Turnamen Selesai! Semua pemain telah bertanding.');
       setGameState('start');
       return;
     }
-    setGameState('shuffle');
+    setGameState('shuffle'); // Go back to bracket screen
   };
 
   return (
@@ -132,7 +151,9 @@ function App() {
       
       {gameState === 'shuffle' && (
         <ShuffleScreen 
-          studentList={studentList}
+          matchups={matchups}
+          hasDrawnBracket={hasDrawnBracket}
+          onBracketDrawn={() => setHasDrawnBracket(true)}
           onComplete={handleShuffleComplete}
         />
       )}

@@ -22,6 +22,7 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
   // Audio refs
   const correctSoundRef = useRef(null);
   const wrongSoundRef = useRef(null);
+  const timeWarningSoundRef = useRef(null);
 
   // Canvas & Game State Refs
   const canvasRef = useRef(null);
@@ -38,6 +39,7 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
     groundY: 0,
     pullDist: 0,
     createDust: null,
+    createFloatingText: null,
     visualRopePos: 0
   });
 
@@ -48,6 +50,7 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
   useEffect(() => {
     correctSoundRef.current = new Audio('sounds/correct.mp3');
     wrongSoundRef.current = new Audio('sounds/wrong.mp3');
+    timeWarningSoundRef.current = new Audio('sounds/time_warning.mp3');
   }, []);
 
   // Timer Effect
@@ -59,6 +62,14 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
     }
     
     if (localGameOverRef.current) return;
+    
+    // Play warning tick during the last 5 seconds
+    if (timer <= 5 && timer > 0) {
+      if (timeWarningSoundRef.current) {
+        timeWarningSoundRef.current.currentTime = 0;
+        timeWarningSoundRef.current.play().catch(() => {});
+      }
+    }
     
     const interval = setInterval(() => {
       setTimer(t => t - 1);
@@ -82,6 +93,7 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
         if (animState.current && animState.current.createDust) {
           animState.current.p1PullTimer = 8;
           animState.current.createDust(1);
+          animState.current.createFloatingText(1, "+1 Tarik!", "#3B82F6");
         }
         setTimeout(() => setP1Flash(null), 400);
         
@@ -116,6 +128,7 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
         if (animState.current && animState.current.createDust) {
           animState.current.p2PullTimer = 8;
           animState.current.createDust(2);
+          animState.current.createFloatingText(2, "+1 Tarik!", "#EF4444");
         }
         setTimeout(() => setP2Flash(null), 400);
         
@@ -198,6 +211,22 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
             size: Math.random() * 5 + 2
         });
       }
+    };
+
+    animState.current.createFloatingText = (player, text, color) => {
+      const x = getPlayerX(player, animState.current.visualRopePos);
+      const y = animState.current.groundY - 100; // Start above head
+      
+      if (!animState.current.floatingTexts) animState.current.floatingTexts = [];
+      
+      animState.current.floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color,
+        life: 1.0,
+        vy: -1 // Move upwards slower
+      });
     };
 
     const drawPlayer = (x, y, color, isLeft, pullActive, isFallen, isWinner) => {
@@ -431,6 +460,31 @@ export default function GameScreen({ p1Name, p2Name, gameDuration, generateMathQ
       });
       ctx.globalAlpha = 1.0;
       animState.current.particles = particles.filter(p => p.life > 0);
+
+      // Floating Texts Update
+      if (animState.current.floatingTexts) {
+          animState.current.floatingTexts.forEach(ft => {
+              ft.y += ft.vy;
+              ft.life -= 0.01; // Slower fade out rate
+              
+              if (ft.life > 0) {
+                  ctx.globalAlpha = Math.max(0, ft.life);
+                  ctx.font = "bold 24px 'Nunito', sans-serif";
+                  ctx.textAlign = "center";
+                  
+                  // Text outline for visibility
+                  ctx.strokeStyle = '#ffffff';
+                  ctx.lineWidth = 4;
+                  ctx.strokeText(ft.text, ft.x, ft.y);
+                  
+                  // Text fill
+                  ctx.fillStyle = ft.color;
+                  ctx.fillText(ft.text, ft.x, ft.y);
+              }
+          });
+          ctx.globalAlpha = 1.0;
+          animState.current.floatingTexts = animState.current.floatingTexts.filter(ft => ft.life > 0);
+      }
 
       animState.current.p1PullTimer = Math.max(0, animState.current.p1PullTimer - 1);
       animState.current.p2PullTimer = Math.max(0, animState.current.p2PullTimer - 1);
