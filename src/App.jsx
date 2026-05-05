@@ -84,10 +84,10 @@ function App() {
     let loser = null;
     let isDraw = false;
 
-    if (ropePos > 0) {
+    if (ropePos < 0) {
       winner = p1Name;
       loser = p2Name;
-    } else if (ropePos < 0) {
+    } else if (ropePos > 0) {
       winner = p2Name;
       loser = p1Name;
     } else {
